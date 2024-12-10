@@ -75,7 +75,7 @@ app.view('article_modal', async ({ ack, body, view, client }) => {
       .from('articles_metadata')
       .insert([
         {
-          url: ogUrl,
+          url: url,
           title: ogTitle ?? '',
           description: ogDescription ?? '',
           image_url: imageUrl,
