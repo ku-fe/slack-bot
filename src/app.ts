@@ -12,7 +12,6 @@ const app = new App({
   appToken: process.env.SLACK_APP_TOKEN
 });
 
-// Supabase 클라이언트 초기화
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_ANON_KEY!
@@ -27,6 +26,7 @@ app.command('/아티클', async ({ ack, body, client }) => {
       view: {
         type: 'modal',
         callback_id: 'article_modal',
+        private_metadata: body.channel_id,
         title: {
           type: 'plain_text',
           text: '아티클 추가'
@@ -64,17 +64,18 @@ app.view('article_modal', async ({ ack, body, view, client }) => {
   await ack();
 
   const url = view.state.values.article_url_block.article_url_input.value ?? '';
+  const channelId = view.private_metadata;
   
   try {
     const { result } = await ogs({ url });
     const { ogImage, ogTitle, ogDescription, ogUrl } = result;
     const imageUrl = ogImage?.[0]?.url ?? '';
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('articles_metadata')
       .insert([
         {
-          url: url,
+          url: ogUrl,
           title: ogTitle ?? '',
           description: ogDescription ?? '',
           image_url: imageUrl,
@@ -83,31 +84,16 @@ app.view('article_modal', async ({ ack, body, view, client }) => {
       ]);
 
     if (error) throw error;
-
-    // 성공 메시지 전송
+    
     await client.chat.postMessage({
-      channel: body.user.id,
+      channel: channelId,
       text: `새로운 아티클이 추가되었습니다: ${ogTitle ?? '제목 없음'}`,
       blocks: [
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*새로운 아티클이 추가되었습니다*\n<${url}|${ogTitle ?? '제목 없음'}>`
-          }
-        },
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `이미지: <${imageUrl}|이미지>`
-          }
-        },
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `설명: ${ogDescription ?? '설명 없음'}`
+            text: `*<@${body.user.id}>님이 새로운 아티클을 추가했습니다*\n<${url}|${ogTitle ?? '제목 없음'}>`
           }
         }
       ]
