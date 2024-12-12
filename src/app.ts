@@ -68,63 +68,63 @@ app.command('/아티클', async ({ ack, body, client }) => {
                     type: 'plain_text',
                     text: 'JavaScript'
                   },
-                  value: 'javascript'
+                  value: 'JavaScript'
                 },
                 {
                   text: {
                     type: 'plain_text',
                     text: 'TypeScript'
                   },
-                  value: 'typescript'
+                  value: 'TypeScript'
                 },
                 {
                   text: {
                     type: 'plain_text',
                     text: 'React'
                   },
-                  value: 'react'
+                  value: 'React'
                 },
                 {
                   text: {
                     type: 'plain_text',
                     text: 'Frontend'
                   },
-                  value: 'frontend'
+                  value: 'Frontend'
                 },
                 {
                   text: {
                     type: 'plain_text',
                     text: 'Backend'
                   },
-                  value: 'backend'
+                  value: 'Backend'
                 },
                 {
                   text: {
                     type: 'plain_text',
                     text: 'DevOps'
                   },
-                  value: 'devops'
+                  value: 'DevOps'
                 },
                 {
                   text: {
                     type: 'plain_text',
                     text: 'AI'
                   },
-                  value: 'ai'
+                  value: 'AI'
                 },
                 {
                   text: {
                     type: 'plain_text',
                     text: '디자인'
                   },
-                  value: 'design'
+                  value: '디자인'
                 },
                 {
                   text: {
                     type: 'plain_text',
                     text: '기타'
                   },
-                  value: 'etc'
+                  value: '기타'
                 }
               ]
             },
