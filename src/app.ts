@@ -51,6 +51,87 @@ app.command('/아티클', async ({ ack, body, client }) => {
               type: 'plain_text',
               text: '아티클 URL'
             }
+          },
+          {
+            type: 'input',
+            block_id: 'article_tags_block',
+            element: {
+              type: 'multi_static_select',
+              action_id: 'article_tags_input',
+              placeholder: {
+                type: 'plain_text',
+                text: '태그를 선택해주세요'
+              },
+              options: [
+                {
+                  text: {
+                    type: 'plain_text',
+                    text: 'JavaScript'
+                  },
+                  value: 'javascript'
+                },
+                {
+                  text: {
+                    type: 'plain_text',
+                    text: 'TypeScript'
+                  },
+                  value: 'typescript'
+                },
+                {
+                  text: {
+                    type: 'plain_text',
+                    text: 'React'
+                  },
+                  value: 'react'
+                },
+                {
+                  text: {
+                    type: 'plain_text',
+                    text: 'Frontend'
+                  },
+                  value: 'frontend'
+                },
+                {
+                  text: {
+                    type: 'plain_text',
+                    text: 'Backend'
+                  },
+                  value: 'backend'
+                },
+                {
+                  text: {
+                    type: 'plain_text',
+                    text: 'DevOps'
+                  },
+                  value: 'devops'
+                },
+                {
+                  text: {
+                    type: 'plain_text',
+                    text: 'AI'
+                  },
+                  value: 'ai'
+                },
+                {
+                  text: {
+                    type: 'plain_text',
+                    text: '디자인'
+                  },
+                  value: 'design'
+                },
+                {
+                  text: {
+                    type: 'plain_text',
+                    text: '기타'
+                  },
+                  value: 'etc'
+                }
+              ]
+            },
+            label: {
+              type: 'plain_text',
+              text: '태그'
+            }
           }
         ]
       }
@@ -64,6 +145,7 @@ app.view('article_modal', async ({ ack, body, view, client }) => {
   await ack();
 
   const url = view.state.values.article_url_block.article_url_input.value ?? '';
+  const selectedTags = view.state.values.article_tags_block.article_tags_input.selected_options ?? [];
   const channelId = view.private_metadata;
   
   try {
@@ -79,12 +161,17 @@ app.view('article_modal', async ({ ack, body, view, client }) => {
           title: ogTitle ?? '',
           description: ogDescription ?? '',
           image_url: imageUrl,
+          tags: selectedTags.map(tag => tag.value),
           created_at: new Date().toISOString()
         }
       ]);
 
     if (error) throw error;
     
+    const tagText = selectedTags.length > 0 
+      ? `\n*태그:* ${selectedTags.map(tag => `#${tag.text.text}`).join(' ')}` 
+      : '';
+
     await client.chat.postMessage({
       channel: channelId,
       text: `새로운 아티클이 추가되었습니다: ${ogTitle ?? '제목 없음'}`,
@@ -93,7 +180,7 @@ app.view('article_modal', async ({ ack, body, view, client }) => {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*<@${body.user.id}>님이 새로운 아티클을 추가했습니다*\n<${url}|${ogTitle ?? '제목 없음'}>`
+            text: `*<@${body.user.id}>님이 새로운 아티클을 추가했습니다*\n<${url}|${ogTitle ?? '제목 없음'}>${tagText}`
           }
         }
       ]
@@ -108,7 +195,6 @@ app.view('article_modal', async ({ ack, body, view, client }) => {
   }
 });
 
-// 앱 시작
 (async () => {
   await app.start();
   console.log('⚡️ Slack bot is running with Socket Mode!');
