@@ -5,6 +5,8 @@ import { createClient } from '@supabase/supabase-js';
 
 dotenv.config();
 
+const ARTICLES_CHANNEL_ID = process.env.ARTICLES_CHANNEL_ID!;
+
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET,
@@ -26,7 +28,7 @@ app.command('/아티클', async ({ ack, body, client }) => {
       view: {
         type: 'modal',
         callback_id: 'article_modal',
-        private_metadata: body.channel_id,
+        private_metadata: ARTICLES_CHANNEL_ID,
         title: {
           type: 'plain_text',
           text: '아티클 추가'
@@ -141,19 +143,42 @@ app.command('/아티클', async ({ ack, body, client }) => {
   }
 });
 
+
 app.view('article_modal', async ({ ack, body, view, client }) => {
   await ack();
 
   const url = view.state.values.article_url_block.article_url_input.value ?? '';
   const selectedTags = view.state.values.article_tags_block.article_tags_input.selected_options ?? [];
-  const channelId = view.private_metadata;
+  const articlesChannelId = ARTICLES_CHANNEL_ID;
   
   try {
-    const { result } = await ogs({ url });
-    const { ogImage, ogTitle, ogDescription, ogUrl } = result;
+    // 1. URL이 이미 존재하는지 확인
+    const { data: existingArticle } = await supabase
+      .from('articles_metadata')
+      .select('url')
+      .eq('url', url)
+      .single();
+
+    if (existingArticle) {
+      await client.chat.postMessage({
+        channel: body.user.id,
+        text: '이미 등록된 URL입니다.'
+      });
+      return;
+    }
+
+    // 2. Open Graph 데이터 가져오기
+    const { error: ogsError, result } = await ogs({ url });
+    
+    if (ogsError) {
+      throw new Error('URL 메타데이터를 가져오는데 실패했습니다.');
+    }
+
+    const { ogImage, ogTitle, ogDescription } = result;
     const imageUrl = ogImage?.[0]?.url ?? '';
 
-    const { error } = await supabase
+    // 3. Supabase에 데이터 저장
+    const { error: insertError } = await supabase
       .from('articles_metadata')
       .insert([
         {
@@ -166,31 +191,50 @@ app.view('article_modal', async ({ ack, body, view, client }) => {
         }
       ]);
 
-    if (error) throw error;
-    
-    const tagText = selectedTags.length > 0 
-      ? `\n*태그:* ${selectedTags.map(tag => `#${tag.text.text}`).join(' ')}` 
-      : '';
+    if (insertError) {
+      throw new Error('데이터베이스 저장 중 오류가 발생했습니다.');
+    }
 
+    // 4. 아티클 채널에 메시지 전송
     await client.chat.postMessage({
-      channel: channelId,
+      channel: articlesChannelId,
       text: `새로운 아티클이 추가되었습니다: ${ogTitle ?? '제목 없음'}`,
       blocks: [
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*<@${body.user.id}>님이 새로운 아티클을 추가했습니다*\n<${url}|${ogTitle ?? '제목 없음'}>${tagText}`
+            text: `*<@${body.user.id}>님이 새로운 아티클을 추가했습니다*\n<${url}|${ogTitle ?? '제목 없음'}>`
           }
+        },
+        {
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: `태그: ${selectedTags.map(tag => `\`${tag.value}\``).join(', ')}`
+            }
+          ]
         }
       ]
     });
 
-  } catch (error) {
-    console.error(error);
+    // 5. 사용자에게 DM으로 성공 메시지 전송
     await client.chat.postMessage({
       channel: body.user.id,
-      text: '아티클 저장 중 오류가 발생했습니다.'
+      text: `아티클이 성공적으로 <#${articlesChannelId}>에 추가되었습니다.`
+    });
+
+  } catch (error) {
+    console.error('Error:', error);
+    
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : '아티클 저장 중 알 수 없는 오류가 발생했습니다.';
+
+    await client.chat.postMessage({
+      channel: body.user.id,
+      text: errorMessage
     });
   }
 });
