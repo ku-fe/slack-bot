@@ -449,6 +449,7 @@ app.view('job_modal', async ({ ack, body, view, client }) => {
 
     // getImageUrl 함수를 재사용하여 이미지 URL 추출
     const getImageUrl = (result: any) => {
+      console.log(result);
       if (result.ogImage?.[0]?.url) {
         return new URL(result.ogImage[0].url, url).toString();
       }
