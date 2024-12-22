@@ -289,14 +289,45 @@ app.view('article_modal', async ({ ack, body, view, client }) => {
     }
 
     // 2. Open Graph 데이터 가져오기
-    const { error: ogsError, result } = await ogs({ url });
+    const { error: ogsError, result } = await ogs({ 
+      url,
+      fetchOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      },
+      onlyGetOpenGraphInfo: false,
+    });
     
     if (ogsError) {
       throw new Error('URL 메타데이터를 가져오는데 실패했습니다.');
     }
 
-    const { ogImage, ogTitle, ogDescription } = result;
-    const imageUrl = ogImage?.[0]?.url ?? '';
+    const getImageUrl = (result: any) => {
+      // OG 이미지 시도
+      if (result.ogImage?.[0]?.url) {
+        return new URL(result.ogImage[0].url, url).toString();
+      }
+      
+      // Twitter 이미지 시도
+      if (result.twitterImage?.[0]?.url) {
+        return new URL(result.twitterImage[0].url, url).toString();
+      }
+      
+      // 일반 이미지 메타 태그 시도
+      if (result.customMetaTags) {
+        const imageTag = result.customMetaTags.find((tag: any) => 
+          tag.name === 'image' || tag.property === 'image'
+        );
+        if (imageTag?.content) {
+          return new URL(imageTag.content, url).toString();
+        }
+      }
+      
+      return '';
+    };
+
+    const imageUrl = getImageUrl(result);
 
     // 3. Supabase에 데이터 저장
     const { error: insertError } = await supabase
@@ -304,8 +335,8 @@ app.view('article_modal', async ({ ack, body, view, client }) => {
       .insert([
         {
           url: url,
-          title: ogTitle ?? '',
-          description: ogDescription ?? '',
+          title: result.ogTitle ?? '',
+          description: result.ogDescription ?? '',
           image_url: imageUrl,
           tags: selectedTags.map(tag => tag.value),
           created_at: new Date().toISOString()
@@ -319,13 +350,13 @@ app.view('article_modal', async ({ ack, body, view, client }) => {
     // 4. 아티클 채널에 메시지 전송
     await client.chat.postMessage({
       channel: articlesChannelId,
-      text: `새로운 아티클이 추가되었습니다: ${ogTitle ?? '제목 없음'}`,
+      text: `새로운 아티클이 추가되었습니다: ${result.ogTitle ?? '제목 없음'}`,
       blocks: [
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*<@${body.user.id}>님이 새로운 아티클을 추가했습니다*\n<${url}|${ogTitle ?? '제목 없음'}>`
+            text: `*<@${body.user.id}>님이 새로운 아티클을 추가했습니다*\n<${url}|${result.ogTitle ?? '제목 없음'}>`
           }
         },
         {
@@ -340,7 +371,7 @@ app.view('article_modal', async ({ ack, body, view, client }) => {
       ]
     });
 
-    // 5. 사용자에게 DM으로 성공 메시지 전송
+    // 5. 사용자에게 DM으로 성 메시지 전송
     await client.chat.postMessage({
       channel: body.user.id,
       text: `아티클이 성공적으로 <#${articlesChannelId}>에 추가되었습니다.`
@@ -380,12 +411,20 @@ app.view('job_modal', async ({ ack, body, view, client }) => {
     if (existingJob) {
       await client.chat.postMessage({
         channel: body.user.id,
-        text: '이미 등록된 채용공고입니다.'
+        text: '이미 등록된 채용공고입다.'
       });
       return;
     }
 
-    const { error: ogsError, result } = await ogs({ url });
+    const { error: ogsError, result } = await ogs({ 
+      url,
+      fetchOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      },
+      onlyGetOpenGraphInfo: false,
+    });
     const { ogImage, ogTitle, ogDescription } = result;
     
     if (ogsError) {
