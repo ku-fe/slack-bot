@@ -304,23 +304,44 @@ app.view('article_modal', async ({ ack, body, view, client }) => {
     }
 
     const getImageUrl = (result: any) => {
-      // OG 이미지 시도
+      // 기존 OG 이미지 체크
       if (result.ogImage?.[0]?.url) {
-        return new URL(result.ogImage[0].url, url).toString();
+        try {
+          return new URL(result.ogImage[0].url, url).toString();
+        } catch (e) {
+          console.error('OG Image URL parsing failed:', e);
+        }
       }
       
-      // Twitter 이미지 시도
+      // Twitter 이미지 체크
       if (result.twitterImage?.[0]?.url) {
-        return new URL(result.twitterImage[0].url, url).toString();
+        try {
+          return new URL(result.twitterImage[0].url, url).toString();
+        } catch (e) {
+          console.error('Twitter Image URL parsing failed:', e);
+        }
       }
       
-      // 일반 이미지 메타 태그 시도
-      if (result.customMetaTags) {
-        const imageTag = result.customMetaTags.find((tag: any) => 
-          tag.name === 'image' || tag.property === 'image'
-        );
-        if (imageTag?.content) {
-          return new URL(imageTag.content, url).toString();
+      // HTML에서 img 태그 찾기
+      if (result.html) {
+        // 로고 이미지 찾기
+        const logoMatch = result.html.match(/<img[^>]+src="([^"]*logo[^"]*\.(?:png|jpg|jpeg|gif))"/i);
+        if (logoMatch?.[1]) {
+          try {
+            return new URL(logoMatch[1], url).toString();
+          } catch (e) {
+            console.error('Logo Image URL parsing failed:', e);
+          }
+        }
+        
+        // 일반 이미지 찾기
+        const imgMatch = result.html.match(/<img[^>]+src="([^"]+\.(?:png|jpg|jpeg|gif))"/i);
+        if (imgMatch?.[1]) {
+          try {
+            return new URL(imgMatch[1], url).toString();
+          } catch (e) {
+            console.error('General Image URL parsing failed:', e);
+          }
         }
       }
       
@@ -425,11 +446,38 @@ app.view('job_modal', async ({ ack, body, view, client }) => {
       },
       onlyGetOpenGraphInfo: false,
     });
-    const { ogImage, ogTitle, ogDescription } = result;
-    
-    if (ogsError) {
-      throw new Error('URL 메타데이터를 가져오는데 실패했습니다.');
-    }
+
+    // getImageUrl 함수를 재사용하여 이미지 URL 추출
+    const getImageUrl = (result: any) => {
+      if (result.ogImage?.[0]?.url) {
+        return new URL(result.ogImage[0].url, url).toString();
+      }
+      
+      if (result.twitterImage?.[0]?.url) {
+        return new URL(result.twitterImage[0].url, url).toString();
+      }
+      
+      if (result.customMetaTags) {
+        const imageTag = result.customMetaTags.find((tag: any) => 
+          tag.name === 'image' || tag.property === 'image'
+        );
+        if (imageTag?.content) {
+          return new URL(imageTag.content, url).toString();
+        }
+      }
+      
+      // 추가: img 태그에서 이미지 찾기
+      if (result.html) {
+        const imgMatch = result.html.match(/<img[^>]+src="([^">]+)"/);
+        if (imgMatch?.[1]) {
+          return new URL(imgMatch[1], url).toString();
+        }
+      }
+      
+      return '';
+    };
+
+    const imageUrl = getImageUrl(result);
 
     // 2. Supabase에 데이터 저장
     const { error: insertError } = await supabase
@@ -441,9 +489,9 @@ app.view('job_modal', async ({ ack, body, view, client }) => {
           position,
           job_type: jobType,
           experience,
-          image_url: ogImage?.[0]?.url ?? '',
-          title: ogTitle ?? '',
-          description: ogDescription ?? '',
+          image_url: imageUrl, // ogImage?.[0]?.url 대신 getImageUrl 함수 사용
+          title: result.ogTitle ?? '',
+          description: result.ogDescription ?? '',
           created_at: new Date().toISOString(),
         }
       ]);
