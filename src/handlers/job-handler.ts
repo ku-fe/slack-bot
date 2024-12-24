@@ -210,7 +210,9 @@ export const jobHandler = () => {
                          `${experience}년 이상`;
     const isAlways = view.state.values.is_always_block.is_always_input.selected_options?.length ?? 0 > 0;
     const startDate = view.state.values.start_date_block.start_date_input.selected_date ?? '';
-    const endDate = isAlways ? null : view.state.values.end_date_block.end_date_input.selected_date ?? '';
+    const endDate = isAlways || !view.state.values.end_date_block.end_date_input.selected_date 
+      ? null 
+      : view.state.values.end_date_block.end_date_input.selected_date;
     
     try {
       // 1. URL이 이미 존재하는지 확인
