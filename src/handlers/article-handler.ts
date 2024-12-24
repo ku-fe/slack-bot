@@ -167,51 +167,6 @@ export const articleHandler = () => {
         throw new Error('URL 메타데이터를 가져오는데 실패했습니다.');
       }
 
-      const getImageUrl = (result: any) => {
-        // 기존 OG 이미지 체크
-        if (result.ogImage?.[0]?.url) {
-          try {
-            return new URL(result.ogImage[0].url, url).toString();
-          } catch (e) {
-            console.error('OG Image URL parsing failed:', e);
-          }
-        }
-        
-        // Twitter 이미지 체크
-        if (result.twitterImage?.[0]?.url) {
-          try {
-            return new URL(result.twitterImage[0].url, url).toString();
-          } catch (e) {
-            console.error('Twitter Image URL parsing failed:', e);
-          }
-        }
-        
-        // HTML에서 img 태그 찾기
-        if (result.html) {
-          // 로고 이미지 찾기
-          const logoMatch = result.html.match(/<img[^>]+src="([^"]*logo[^"]*\.(?:png|jpg|jpeg|gif))"/i);
-          if (logoMatch?.[1]) {
-            try {
-              return new URL(logoMatch[1], url).toString();
-            } catch (e) {
-              console.error('Logo Image URL parsing failed:', e);
-            }
-          }
-          
-          // 일반 이미지 찾기
-          const imgMatch = result.html.match(/<img[^>]+src="([^"]+\.(?:png|jpg|jpeg|gif))"/i);
-          if (imgMatch?.[1]) {
-            try {
-              return new URL(imgMatch[1], url).toString();
-            } catch (e) {
-              console.error('General Image URL parsing failed:', e);
-            }
-          }
-        }
-        
-        return '';
-      };
-
       const imageUrl = getImageUrl(result);
 
       // 3. Supabase에 데이터 저장
