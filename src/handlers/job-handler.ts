@@ -273,7 +273,7 @@ export const jobHandler = () => {
             type: 'section',
             text: {
               type: 'mrkdwn',
-              text: `*고용형태:* ${jobType}\n*요구경력:* ${experienceText}\n*모집기간:* ${isAlways ? '상시채용' : `${startDate} ~ ${endDate}`}\n*URL:* <${url}|채용공고 바로가기>`
+              text: `*고용형태:* ${jobType}\n*요구경력:* ${experienceText}\n*모집기간:* ${isAlways ? '상시채용' : `${startDate} ~ ${endDate ?? '채용시까지'}`}\n*URL:* <${url}|채용공고 바로가기>`
             }
           },
         ]
