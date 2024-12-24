@@ -437,45 +437,22 @@ app.view('job_modal', async ({ ack, body, view, client }) => {
       return;
     }
 
-    const { error: ogsError, result } = await ogs({ 
-      url,
-      fetchOptions: {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-      },
-      onlyGetOpenGraphInfo: false,
-    });
+    const { result } = await ogs({ url });
 
-    // getImageUrl 함수를 재사용하여 이미지 URL 추출
     const getImageUrl = (result: any) => {
-      console.log(result);
+
+      // ogImage를 가지고 있는 경우
       if (result.ogImage?.[0]?.url) {
-        return new URL(result.ogImage[0].url, url).toString();
-      }
-      
-      if (result.twitterImage?.[0]?.url) {
-        return new URL(result.twitterImage[0].url, url).toString();
-      }
-      
-      if (result.customMetaTags) {
-        const imageTag = result.customMetaTags.find((tag: any) => 
-          tag.name === 'image' || tag.property === 'image'
-        );
-        if (imageTag?.content) {
-          return new URL(imageTag.content, url).toString();
+        // ogImage가 절대 경로인 경우
+        if (result.ogImage[0].url.startsWith('http')) {
+          return result.ogImage[0].url;
         }
+        // ogImage가 상대 경로인 경우
+        return result.ogUrl + result.ogImage[0].url;
       }
       
-      // 추가: img 태그에서 이미지 찾기
-      if (result.html) {
-        const imgMatch = result.html.match(/<img[^>]+src="([^">]+)"/);
-        if (imgMatch?.[1]) {
-          return new URL(imgMatch[1], url).toString();
-        }
-      }
-      
-      return '';
+      // ogImage를 가지고 있지 않은 경우
+      return result.favicon;
     };
 
     const imageUrl = getImageUrl(result);
@@ -490,7 +467,7 @@ app.view('job_modal', async ({ ack, body, view, client }) => {
           position,
           job_type: jobType,
           experience,
-          image_url: imageUrl, // ogImage?.[0]?.url 대신 getImageUrl 함수 사용
+          image_url: imageUrl,
           title: result.ogTitle ?? '',
           description: result.ogDescription ?? '',
           created_at: new Date().toISOString(),
