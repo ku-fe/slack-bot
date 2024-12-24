@@ -106,16 +106,85 @@ export const jobHandler = () => {
               type: 'input',
               block_id: 'experience_block',
               element: {
-                type: 'plain_text_input',
+                type: 'static_select',
                 action_id: 'experience_input',
                 placeholder: {
                   type: 'plain_text',
-                  text: '예: 신입, 3년 이상, 경력무관 등'
-                }
+                  text: '요구 경력을 선택해주세요'
+                },
+                options: [
+                  {
+                    text: { type: 'plain_text' as const, text: '경력 무관' },
+                    value: '-1'
+                  },
+                  {
+                    text: { type: 'plain_text' as const, text: '신입' },
+                    value: '0'
+                  },
+                  ...Array.from({ length: 30 }, (_, i) => i + 1).map(year => ({
+                    text: { type: 'plain_text' as const, text: `${year}년 이상` },
+                    value: year.toString()
+                  }))
+                ]
               },
               label: {
                 type: 'plain_text',
                 text: '요구 경력'
+              }
+            },
+            {
+              type: 'input',
+              block_id: 'start_date_block',
+              element: {
+                type: 'datepicker',
+                action_id: 'start_date_input',
+                placeholder: {
+                  type: 'plain_text',
+                  text: '모집 시작일을 선택해주세요'
+                },
+                initial_date: new Date().toISOString().split('T')[0]
+              },
+              label: {
+                type: 'plain_text',
+                text: '모집 시작일'
+              }
+            },
+            {
+              type: 'input',
+              block_id: 'end_date_block',
+              optional: true,
+              element: {
+                type: 'datepicker',
+                action_id: 'end_date_input',
+                placeholder: {
+                  type: 'plain_text',
+                  text: '모집 종료일을 선택해주세요'
+                }
+              },
+              label: {
+                type: 'plain_text',
+                text: '모집 종료일'
+              }
+            },
+            {
+              type: 'input',
+              block_id: 'is_always_block',
+              element: {
+                type: 'checkboxes',
+                action_id: 'is_always_input',
+                options: [
+                  {
+                    text: {
+                      type: 'plain_text',
+                      text: '상시 채용'
+                    },
+                    value: 'true'
+                  }
+                ]
+              },
+              label: {
+                type: 'plain_text',
+                text: '상시 채용 여부'
               }
             }
           ]
@@ -134,7 +203,13 @@ export const jobHandler = () => {
     const companyName = view.state.values.company_name_block.company_name_input.value ?? '';
     const position = view.state.values.position_block.position_input.value ?? '';
     const jobType = view.state.values.job_type_block.job_type_input.selected_option?.value ?? '';
-    const experience = view.state.values.experience_block.experience_input.value ?? '';
+    const experience = view.state.values.experience_block.experience_input.selected_option?.value ?? '0';
+    const experienceText = experience === '-1' ? '경력 무관' : 
+                         experience === '0' ? '신입' : 
+                         `${experience}년 이상`;
+    const isAlways = view.state.values.is_always_block.is_always_input.selected_options?.length ?? 0 > 0;
+    const startDate = view.state.values.start_date_block.start_date_input.selected_date ?? '';
+    const endDate = isAlways ? null : view.state.values.end_date_block.end_date_input.selected_date ?? '';
     
     try {
       // 1. URL이 이미 존재하는지 확인
@@ -169,6 +244,9 @@ export const jobHandler = () => {
             title: result.ogTitle ?? '',
             description: result.ogDescription ?? '',
             created_at: new Date().toISOString(),
+            start_date: startDate,
+            end_date: endDate,
+            is_always: isAlways
           }
         ]);
 
@@ -192,7 +270,7 @@ export const jobHandler = () => {
             type: 'section',
             text: {
               type: 'mrkdwn',
-              text: `*고용형태:* ${jobType}\n*요구경력:* ${experience}\n*URL:* <${url}|채용공고 바로가기>`
+              text: `*고용형태:* ${jobType}\n*요구경력:* ${experienceText}\n*모집기간:* ${isAlways ? '상시채용' : `${startDate} ~ ${endDate}`}\n*URL:* <${url}|채용공고 바로가기>`
             }
           },
         ]
