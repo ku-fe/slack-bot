@@ -121,7 +121,7 @@ export const jobHandler = () => {
                     text: { type: 'plain_text' as const, text: '신입' },
                     value: '0'
                   },
-                  ...Array.from({ length: 30 }, (_, i) => i + 1).map(year => ({
+                  ...Array.from({ length: 10 }, (_, i) => i + 1).map(year => ({
                     text: { type: 'plain_text' as const, text: `${year}년 이상` },
                     value: year.toString()
                   }))
@@ -169,6 +169,7 @@ export const jobHandler = () => {
             {
               type: 'input',
               block_id: 'is_always_block',
+              optional: true,
               element: {
                 type: 'checkboxes',
                 action_id: 'is_always_input',
